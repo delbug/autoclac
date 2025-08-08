@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="format-detection" content="telephone=no,email=no,address=no" />
+  <meta name="theme-color" content="#0a0f22" />
+  <title>收益计算器</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      /* 背景深蓝 */
+      --card: #0b1226;
+      /* 卡片更深 */
+      --muted: #8aa0c6;
+      /* 次要文字 */
+      --text: #e6eefc;
+      /* 主文字 */
+      --brand: #60a5fa;
+      /* 品牌蓝 */
+      --accent: #34d399;
+      /* 强调绿 */
+      --danger: #f87171;
+      --ring: rgba(96, 165, 250, .5);
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    html, body { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #1a2b54 0%, transparent 60%),
+        radial-gradient(1000px 800px at 110% 10%, #123d3d 0%, transparent 55%),
+        linear-gradient(180deg, #0a0f22 0%, var(--bg) 60%);
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding:
+        max(16px, env(safe-area-inset-top))
+        max(24px, env(safe-area-inset-right))
+        max(16px, env(safe-area-inset-bottom))
+        max(24px, env(safe-area-inset-left));
+      -webkit-tap-highlight-color: rgba(0,0,0,0);
+    }
+
+    .app {
+      width: min(1100px, 100%);
+      display: grid;
+      gap: 20px;
+      grid-template-columns: 1.15fr 1.85fr;
+    }
+
+    @media (max-width:900px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width:820px) {
+      .app { gap: 16px; }
+      .panel { padding: 16px; }
+    }
+
+    .panel {
+      background: linear-gradient(180deg, rgba(255, 255, 255, .03), rgba(255, 255, 255, .01));
+      border: 1px solid rgba(255, 255, 255, .06);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .06);
+      backdrop-filter: blur(6px);
+    }
+
+    .title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 6px 0 16px;
+      font-weight: 700;
+      letter-spacing: .3px;
+    }
+
+    .title .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand), var(--accent));
+      box-shadow: 0 0 18px var(--brand);
+    }
+
+    .field {
+      margin: 14px 0;
+    }
+
+    .label {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .input {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, .08);
+      background: rgba(12, 18, 40, .55);
+      color: var(--text);
+      outline: none;
+      transition: .2s border-color, .2s box-shadow, .2s background;
+      min-height: 54px;
+    }
+
+    .input:focus-within {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 4px var(--ring);
+      background: rgba(12, 18, 40, .75);
+    }
+
+    .input input {
+      width: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: inherit;
+      font-size: 22px;
+      line-height: 1.4;
+      appearance: textfield;
+    }
+    .input input::placeholder{ color: var(--muted); opacity:.9; font-size: 22px; }
+
+    .suffix {
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .slider {
+      width: 100%;
+      accent-color: var(--brand);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 6px;
+    }
+
+    .results {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width:700px) {
+      .results {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width:480px) {
+      .panel { padding: 12px; }
+      .results { gap: 10px; }
+      .badge { top: 10px; right: 10px; font-size: 11px; padding: 4px 8px; }
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255, 255, 255, .03), rgba(255, 255, 255, .01));
+      border: 1px solid rgba(255, 255, 255, .06);
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, .3), inset 0 1px 0 rgba(255, 255, 255, .05);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .badge {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      font-size: 12px;
+      color: #0a1516;
+      background: linear-gradient(135deg, var(--brand), var(--accent));
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      letter-spacing: .2px;
+      box-shadow: 0 6px 18px rgba(52, 211, 153, .35);
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: clamp(14px, 3.8vw, 16px);
+      color: #eaf2ff;
+      letter-spacing: .2px;
+      padding-right: 86px; /* 为右上角徽标预留空间，避免标题被覆盖 */
+      line-height: 1.5;
+      word-break: break-all;
+    }
+
+    .money {
+      font-size: clamp(20px, 6.5vw, 28px);
+      font-weight: 800;
+      letter-spacing: .3px;
+      margin: 8px 0 6px;
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    /* 放大期末本息显示 */
+    #customTotal {
+      font-size: 16px;
+      color: #e6eefc;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+
+    #customTotalMagnitudeWrap {
+      margin-top: 4px;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .kpi {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .kpi span {
+      background: rgba(255, 255, 255, .05);
+      border: 1px solid rgba(255, 255, 255, .06);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 600;
+      color: #cfe3ff;
+    }
+
+    .warn {
+      color: var(--danger);
+    }
+
+    .select {
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, .1);
+      background: rgba(12, 18, 40, .55);
+      color: var(--text);
+      outline: none;
+      min-height: 44px;
+    }
+
+    .brand {
+      color: var(--brand);
+      font-weight: 700;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <!-- 左侧：输入区 -->
+    <div class="panel">
+      <div class="title"><span class="dot"></span> 收益计算器</div>
+
+      <div class="field">
+        <div class="label">投入资金</div>
+        <div class="row">
+          <div class="input">
+            <input id="principal" type="number" inputmode="decimal" autocomplete="off" min="0" step="0.01" placeholder="例如：10000" />
+            <div class="suffix">元</div>
+          </div>
+        </div>
+        <div class="hint">请输入本金金额，单位为人民币元。 量级：<span id="principalHintMagnitude" class="brand">--</span></div>
+      </div>
+
+      <div class="field">
+        <div class="label">年化利率</div>
+        <div class="row">
+          <div class="input" style="max-width: 420px; flex:1;">
+            <input id="rate" type="number" inputmode="decimal" autocomplete="off" min="-100" max="100" step="0.01" placeholder="如 2.50 或 -0.50" />
+            <div class="suffix">%</div>
+          </div>
+        </div>
+        <div class="hint">说明：可切换单利或按日复利；日利率 = 年化/365。</div>
+      </div>
+
+      <div class="field">
+        <div class="label">收益方式</div>
+        <div class="row">
+          <select id="method" class="select">
+            <option value="simple">单利</option>
+            <option value="compound">复利（按日计复利）</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="label">计算周期</div>
+        <div class="row">
+          <select id="customPeriod" class="select">
+            <option value="d:1">1 天</option>
+            <option value="d:7">7 天</option>
+            <option value="m:1" selected>1 个月</option>
+            <option value="m:2">2 个月</option>
+            <option value="m:3">3 个月</option>
+            <option value="m:6">6 个月</option>
+            <option value="y:1">1 年</option>
+            <option value="y:2">2 年</option>
+            <option value="y:3">3 年</option>
+            <option value="y:5">5 年</option>
+            <option value="y:8">8 年</option>
+            <option value="y:10">10 年</option>
+          </select>
+        </div>
+        <div class="hint">说明：月份按下方“按月天数估算”的天数换算。</div>
+      </div>
+
+      <div class="field">
+        <div class="label">按月天数估算</div>
+        <select id="monthDays" class="select">
+          <option value="30">30 天（默认）</option>
+          <option value="31">31 天</option>
+          <option value="28">28 天</option>
+          <option value="29">29 天</option>
+          <option value="365">按年化/12 近似</option>
+        </select>
+      </div>
+
+      <div class="footer">
+        <div>单位：人民币</div>
+        <div class="warn">计算结果，仅供参考</div>
+      </div>
+    </div>
+
+    <!-- 右侧：结果区 -->
+    <div class="panel">
+      <div class="title"><span class="dot"></span> 预估收益</div>
+
+      <div class="results">
+        <div class="card">
+          <div class="badge">1 天</div>
+          <h3>日收益</h3>
+          <div id="dayIncome" class="money">--</div>
+          <div id="dayRate" class="sub">日利率：--</div>
+        </div>
+
+        <div class="card">
+          <div class="badge">1 月</div>
+          <h3>月收益</h3>
+          <div id="monthIncome" class="money">--</div>
+          <div id="monthInfo" class="sub">按 30 天估算</div>
+        </div>
+
+        <div class="card">
+          <div class="badge">1 年</div>
+          <h3>年收益</h3>
+          <div id="yearIncome" class="money">--</div>
+          <div id="yearInfo" class="sub">按年化单利估算</div>
+        </div>
+
+        <div class="card">
+          <div class="badge">自定义</div>
+          <h3>自定义周期收益</h3>
+          <div id="customIncome" class="money">--</div>
+          <div id="customInfo" class="sub">--</div>
+          <div id="customTotal" class="sub">期末本息：<span id="customTotalValue">--</span></div>
+          <div id="customTotalMagnitudeWrap" class="sub">量级：<span id="customTotalMagnitude" class="brand">--</span></div>
+        </div>
+      </div>
+
+      <div class="footer" style="margin-top:16px;">
+        <div class="kpi">
+          <span>本金：<span id="principalEcho" class="brand">--</span></span>
+          <span>年化：<span id="rateEcho" class="brand">--</span></span>
+          <span>量级：<span id="principalMagnitude" class="brand">--</span></span>
+        </div>
+        <div id="tip" class="sub">实时计算中…</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const el = (id) => document.getElementById(id);
+    const fmtCNY = (n) => {
+      if (!isFinite(n)) return '--';
+      return new Intl.NumberFormat('zh-CN', {
+        style: 'currency',
+        currency: 'CNY',
+        maximumFractionDigits: 2
+      }).format(n);
+    };
+    const fmtPct = (n) => {
+      if (!isFinite(n)) return '--';
+      return `${(n*100).toFixed(4)}%`;
+    };
+    // 金额量级（中文单位）
+    const magnitudeLabel = (p) => {
+      if (!isFinite(p) || p < 0) return '--';
+      if (p < 100) return '元';
+      if (p < 1000) return '百';
+      if (p < 10000) return '千';
+      if (p < 100000) return '万';
+      if (p < 1000000) return '十万';
+      if (p < 10000000) return '百万';
+      if (p < 100000000) return '千万';
+      if (p < 1000000000) return '亿';
+      if (p < 10000000000) return '十亿';
+      if (p < 100000000000) return '百亿';
+      if (p < 1000000000000) return '千亿';
+      return '万亿+';
+    };
+
+    const principal = el('principal');
+    const rate = el('rate');
+    const monthDays = el('monthDays');
+    const method = el('method');
+    const customPeriod = el('customPeriod');
+
+    const dayIncome = el('dayIncome');
+    const dayRate = el('dayRate');
+    const monthIncome = el('monthIncome');
+    const monthInfo = el('monthInfo');
+    const yearIncome = el('yearIncome');
+    const customIncome = el('customIncome');
+    const customInfo = el('customInfo');
+    const customTotal = el('customTotal');
+    const customTotalMagnitude = el('customTotalMagnitude');
+
+    const principalEcho = el('principalEcho');
+    const rateEcho = el('rateEcho');
+    const tip = el('tip');
+    const principalMagnitude = el('principalMagnitude');
+    const principalHintMagnitude = el('principalHintMagnitude');
+
+    // 初始值
+    principal.value = 10000;
+    rate.value = 2.50;
+
+    function calc() {
+      const pRaw = parseFloat(principal.value);
+      const rRaw = parseFloat(rate.value); // 年化 %
+      const md = parseInt(monthDays.value, 10);
+      const m = method.value; // simple | compound
+
+      const p = (isFinite(pRaw) && pRaw >= 0) ? pRaw : 0;
+      const r = (isFinite(rRaw)) ? rRaw : 0; // 允许负利率
+
+      principalEcho.textContent = fmtCNY(p);
+      rateEcho.textContent = `${r.toFixed(2)}%`;
+      const mag = magnitudeLabel(p);
+      principalMagnitude.textContent = mag;
+      principalHintMagnitude.textContent = mag;
+
+      // 基础换算（当 r=0 时也要正常显示 0 收益）
+      const dailyRate = (r / 100) / 365;
+
+      // 计算函数
+      const simpleIncome = (principalAmount, days) => principalAmount * dailyRate * days;
+      const compoundIncome = (principalAmount, days) => principalAmount * Math.pow(1 + dailyRate, days) - principalAmount;
+
+      const incomeOf = (days) => (m === 'compound' ? compoundIncome(p, days) : simpleIncome(p, days));
+
+      // 日
+      const dayInc = incomeOf(1);
+      dayIncome.textContent = fmtCNY(dayInc);
+      dayRate.textContent = `日利率：${fmtPct(dailyRate)}`;
+
+      // 月
+      let monthInc;
+      if (md === 365) {
+        // 按年化/12 近似：单利直接 p*r/12；复利用 365/12 的近似天数更贴近日复利
+        if (m === 'compound') {
+          const approxDays = Math.round(365 / 12);
+          monthInc = incomeOf(approxDays);
+          monthInfo.textContent = '按年化/12 近似（按日复利近似天数）';
+        } else {
+          monthInc = p * (r / 100) / 12;
+          monthInfo.textContent = '按年化/12 近似';
+        }
+      } else {
+        monthInc = incomeOf(md);
+        monthInfo.textContent = `按 ${md} 天估算`;
+      }
+      monthIncome.textContent = fmtCNY(monthInc);
+
+      // 年
+      const yearInc = incomeOf(365);
+      yearIncome.textContent = fmtCNY(yearInc);
+      const yearInfoText = m === 'compound' ? '按日复利估算' : '按年化单利估算';
+      el('yearInfo').textContent = yearInfoText;
+
+      // 自定义周期
+      const [unit, countStr] = customPeriod.value.split(':');
+      const count = parseInt(countStr, 10);
+      let customDays = 0;
+      if (unit === 'd') customDays = count;
+      if (unit === 'm') customDays = count * (md === 365 ? Math.round(365 / 12) : md);
+      if (unit === 'y') customDays = count * 365;
+
+      const cIncome = incomeOf(customDays);
+      const cTotal = p + cIncome;
+      customIncome.textContent = fmtCNY(cIncome);
+      el('customTotalValue').textContent = fmtCNY(cTotal);
+      customTotalMagnitude.textContent = magnitudeLabel(cTotal);
+      const unitLabel = unit === 'd' ? '天' : unit === 'm' ? '个月' : '年';
+      const mdInfo = unit === 'm' ? (md === 365 ? '（按年化/12 近似）' : `（每月按 ${md} 天）`) : '';
+      const methodLabel = m === 'compound' ? '复利（按日）' : '单利';
+      customInfo.textContent = `${methodLabel} · 周期：${count} ${unitLabel} ${mdInfo}`.trim();
+
+      tip.textContent = m === 'compound' ? '结果基于按日复利与 365 天换算' : '结果基于年化单利与 365 天计息换算';
+    }
+
+    ['input', 'change'].forEach(evt => {
+      principal.addEventListener(evt, calc);
+      rate.addEventListener(evt, calc);
+      monthDays.addEventListener(evt, calc);
+      method.addEventListener(evt, calc);
+      customPeriod.addEventListener(evt, calc);
+    });
+
+    // 首次计算
+    calc();
+  </script>
+</body>
+
+</html>
